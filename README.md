@@ -64,5 +64,5 @@ This is a personal portfolio, but future collaborators (designers, devs, etc.) m
 ## 📬 Contact Me
 
 📧 sanddune2209@gmail.com  
-🌐 [tejasmalhan.netlify.app](https://tejasmalhan.netlify.app) 
+🌐 [tejasmalhan.netlify.app](https://tejasmalhan.netlify.app)  <br>
 📸 Instagram, LinkedIn (coming soon)
