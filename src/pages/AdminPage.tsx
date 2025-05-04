@@ -30,7 +30,7 @@ const AdminPage = () => {
     
     // Simple authentication - in real app, use proper auth
     setTimeout(() => {
-      if (username === 'admin' && password === 'royal123') {
+      if (username === 'admin' && password === 'tejas22k') {
         localStorage.setItem('adminAuth', 'true');
         setIsAuthenticated(true);
         setLoginError('');
