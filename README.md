@@ -7,7 +7,7 @@ Welcome to the official repository for my **freelance portfolio website**. This 
 
 ## 🚀 Live Website
 
-🔗 [tejasmalhan.netlify.app](https://tejasmalhan.netlify.app) (Coming Soon)
+🔗 [tejasmalhan.netlify.app](https://tejasmalhan.netlify.app) 
 
 ---
 
@@ -15,7 +15,7 @@ Welcome to the official repository for my **freelance portfolio website**. This 
 
 - **Hosting:** Netlify  
 - **Frontend:** HTML / CSS / JavaScript (or React / Astro – to be finalized)  
-- **CMS:** Netlify CMS (via hidden `/admin` route)  
+- **CMS:** Netlify CMS  
 - **Forms:** Netlify Forms + Functions  
 - **Scheduler:** Embedded Calendly  
 - **Fonts:** Space Grotesk + Inter  
@@ -26,12 +26,11 @@ Welcome to the official repository for my **freelance portfolio website**. This 
 ## 📁 Project Structure
 
 ```bash
-/               → Home (Hero, About, Testimonials, CTA)
+/              → Home (Hero, About, Testimonials, CTA)
 /projects       → Thumbnail grid of projects
 /projects/:id   → Detail view for each project
 /services       → Overview of my freelance offerings
 /contact        → Contact form + Calendly booking
-/admin          → Hidden admin panel for content management (Netlify CMS)
 ```
 
 ---
@@ -39,7 +38,6 @@ Welcome to the official repository for my **freelance portfolio website**. This 
 ## ✅ Key Features
 
 - Stunning, animated dark-themed UI  
-- Easily updatable content through `/admin` (no code needed)  
 - Project thumbnails with story + media  
 - Calendly scheduling and contact form  
 - Fully responsive (mobile-first)  
@@ -66,5 +64,5 @@ This is a personal portfolio, but future collaborators (designers, devs, etc.) m
 ## 📬 Contact Me
 
 📧 sanddune2209@gmail.com  
-🌐 [tejasmalhan.netlify.app](https://tejasmalhan.netlify.app) *(under construction)*  
+🌐 [tejasmalhan.netlify.app](https://tejasmalhan.netlify.app) 
 📸 Instagram, LinkedIn (coming soon)
