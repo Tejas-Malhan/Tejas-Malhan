@@ -1,0 +1,140 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --radius: 0.75rem;
+  }
+}
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('https://fonts.cdnfonts.com/css/clash-display') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  * {
+    @apply border-border selection:bg-royal-gold/30 selection:text-white;
+  }
+  
+  body {
+    @apply bg-royal text-foreground antialiased overflow-x-hidden font-inter;
+    background: linear-gradient(to bottom, #1A1F2C, #121520);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-clash;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-royal-gold to-royal-gold_light bg-clip-text text-transparent;
+  }
+  
+  .text-gradient-blue {
+    @apply bg-gradient-to-r from-royal-blue to-royal-purple bg-clip-text text-transparent;
+  }
+
+  .royal-shadow {
+    box-shadow: 0 4px 30px rgba(212, 175, 55, 0.15);
+  }
+  
+  .royal-border {
+    @apply border border-royal-gold/30;
+  }
+  
+  .royal-card {
+    @apply bg-royal-secondary/50 backdrop-blur-sm royal-border rounded-lg p-6 transition-all duration-300;
+  }
+  
+  .royal-card:hover {
+    @apply royal-shadow bg-royal-secondary/70;
+  }
+  
+  .animated-border {
+    @apply relative rounded-lg;
+  }
+  
+  .animated-border::before {
+    content: "";
+    @apply absolute -z-10 inset-0 rounded-lg p-[1px] bg-gradient-to-r from-royal-gold via-royal-blue to-royal-gold bg-[length:200%_100%] animate-shimmer;
+  }
+  
+  .hero-pattern {
+    background-image: radial-gradient(rgba(212, 175, 55, 0.1) 2px, transparent 2px);
+    background-size: 40px 40px;
+  }
+  
+  /* Enhanced animations */
+  .hover-scale {
+    @apply transition-transform duration-300 hover:scale-105;
+  }
+  
+  .hover-glow {
+    @apply transition-all duration-300;
+  }
+  
+  .hover-glow:hover {
+    filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.5));
+  }
+  
+  .float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+    100% { transform: translateY(0px); }
+  }
+  
+  .pulse-glow {
+    animation: pulse-glow 3s infinite;
+  }
+  
+  @keyframes pulse-glow {
+    0% { filter: drop-shadow(0 0 5px rgba(212, 175, 55, 0.2)); }
+    50% { filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.6)); }
+    100% { filter: drop-shadow(0 0 5px rgba(212, 175, 55, 0.2)); }
+  }
+}
