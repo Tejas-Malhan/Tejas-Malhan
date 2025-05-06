@@ -1,90 +1,17 @@
-import { useState } from 'react';
-import { toast } from '@/components/ui/use-toast';
+
+import { useState, useEffect } from 'react';
+import { toast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-
-interface Project {
-  id: number;
-  title: string;
-  category: string;
-  image: string;
-  description: string;
-  featured?: boolean;
-  client?: string;
-  year?: string;
-  challenge?: string;
-  solution?: string;
-  technologies?: string[];
-  testimonial?: {
-    quote: string;
-    name: string;
-    position: string;
-  };
-}
-
-// This would normally come from an API or database
-const initialProjects: Project[] = [
-  {
-    id: 1,
-    title: "Luxury E-commerce",
-    category: "Web Development",
-    image: "https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&q=80",
-    description: "Premium online shopping experience for high-end fashion brand.",
-    featured: true,
-    client: "StyleElegance",
-    year: "2023",
-    challenge: "Create a high-performance e-commerce platform that conveys luxury while maintaining excellent performance and conversion rates.",
-    solution: "Developed a custom headless commerce solution with Next.js and Shopify, focusing on premium animations, product visualization, and a seamless checkout flow.",
-    technologies: ["React", "Next.js", "Shopify", "Tailwind CSS", "Framer Motion"],
-    testimonial: {
-      quote: "The website Tejas created perfectly captures our brand's essence of luxury and exclusivity. The shopping experience is flawless.",
-      name: "Aria Patel",
-      position: "Marketing Director, StyleElegance"
-    }
-  },
-  {
-    id: 2,
-    title: "Corporate Rebrand",
-    category: "Graphic Design",
-    image: "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&q=80",
-    description: "Complete visual identity overhaul for a financial institution.",
-    featured: true,
-    client: "FinSecure Banking",
-    year: "2023",
-    technologies: ["Adobe Illustrator", "Figma", "Adobe Photoshop", "InDesign"],
-    testimonial: {
-      quote: "Our rebranding has been met with overwhelming positive feedback from both customers and employees. Tejas understood exactly what we needed.",
-      name: "Vikram Mehta",
-      position: "CEO, FinSecure Banking"
-    }
-  },
-  {
-    id: 3,
-    title: "Social Campaign",
-    category: "Social Media",
-    image: "https://images.unsplash.com/photo-1431576901776-e539bd916ba2?auto=format&fit=crop&q=80",
-    description: "Strategic campaign that increased engagement by 200%.",
-    featured: true
-  },
-  {
-    id: 4,
-    title: "Product Launch Ads",
-    category: "Advertising",
-    image: "https://images.unsplash.com/photo-1459767129954-1b1c1f9b9ace?auto=format&fit=crop&q=80",
-    description: "Multi-channel advertising campaign for new product line.",
-    featured: true
-  },
-];
+import { supabase } from '@/integrations/supabase/client';
+import { Project } from '@/types/project';
 
 const AdminProjects = () => {
-  const [projects, setProjects] = useState<Project[]>(() => {
-    const savedProjects = localStorage.getItem('portfolioProjects');
-    return savedProjects ? JSON.parse(savedProjects) : initialProjects;
-  });
-  
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [currentProject, setCurrentProject] = useState<Project>({
-    id: 0,
+    id: '',
     title: "",
     category: "",
     image: "",
@@ -95,10 +22,41 @@ const AdminProjects = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [technologies, setTechnologies] = useState<string>("");
   const [hasTestimonial, setHasTestimonial] = useState(false);
+  const [imagesList, setImagesList] = useState<string>("");
+
+  // Fetch projects from Supabase on component mount
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        throw error;
+      }
+      
+      setProjects(data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load projects. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleAddProject = () => {
     setCurrentProject({
-      id: Date.now(),
+      id: '',
       title: "",
       category: "Web Development",
       image: "",
@@ -106,6 +64,7 @@ const AdminProjects = () => {
       featured: false
     });
     setTechnologies("");
+    setImagesList("");
     setHasTestimonial(false);
     setShowAdvanced(false);
     setIsEditing(true);
@@ -113,22 +72,54 @@ const AdminProjects = () => {
 
   const handleEditProject = (project: Project) => {
     setCurrentProject({...project});
-    setTechnologies(project.technologies?.join(", ") || "");
-    setHasTestimonial(!!project.testimonial);
-    setShowAdvanced(!!project.client || !!project.technologies || !!project.testimonial);
+    
+    // Handle technologies for editing - convert array to comma-separated string
+    if (Array.isArray(project.technologies)) {
+      setTechnologies(project.technologies.join(", "));
+    } else if (typeof project.technologies === 'string') {
+      setTechnologies(project.technologies);
+    } else {
+      setTechnologies("");
+    }
+    
+    // Handle images for editing - convert array to newline-separated string
+    if (Array.isArray(project.images) && project.images.length > 0) {
+      setImagesList(project.images.join("\n"));
+    } else {
+      setImagesList("");
+    }
+    
+    setHasTestimonial(!!(project.testimonial_quote || project.testimonial_name));
+    setShowAdvanced(!!(project.client || project.technologies || project.testimonial_quote || project.images));
     setIsEditing(true);
   };
 
-  const handleDeleteProject = (id: number) => {
+  const handleDeleteProject = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this project?")) {
-      const updatedProjects = projects.filter(project => project.id !== id);
-      setProjects(updatedProjects);
-      localStorage.setItem('portfolioProjects', JSON.stringify(updatedProjects));
-      
-      toast({
-        title: "Project deleted",
-        description: "The project has been successfully deleted.",
-      });
+      try {
+        const { error } = await supabase
+          .from('projects')
+          .delete()
+          .eq('id', id);
+          
+        if (error) {
+          throw error;
+        }
+        
+        setProjects(projects.filter(project => project.id !== id));
+        
+        toast({
+          title: "Project deleted",
+          description: "The project has been successfully deleted.",
+        });
+      } catch (error) {
+        console.error('Error deleting project:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete project. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -145,17 +136,13 @@ const AdminProjects = () => {
 
   const handleTestimonialChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
     setCurrentProject({
       ...currentProject,
-      testimonial: {
-        ...currentProject.testimonial || { quote: "", name: "", position: "" },
-        [name.replace('testimonial_', '')]: value
-      }
+      [name]: value
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!currentProject.title || !currentProject.category || !currentProject.image || !currentProject.description) {
@@ -170,47 +157,103 @@ const AdminProjects = () => {
     // Process technologies if provided
     let updatedProject = {...currentProject};
     
+    // Convert technologies from string to array
     if (technologies.trim()) {
       updatedProject.technologies = technologies
         .split(',')
         .map(tech => tech.trim())
         .filter(tech => tech.length > 0);
-    }
-    
-    // Handle testimonial
-    if (!hasTestimonial) {
-      delete updatedProject.testimonial;
-    }
-    
-    let updatedProjects;
-    
-    // If it's a new project
-    if (!projects.find(project => project.id === currentProject.id)) {
-      updatedProjects = [...projects, updatedProject];
-      toast({
-        title: "Project added",
-        description: "The new project has been successfully added.",
-      });
     } else {
-      // If updating an existing project
-      updatedProjects = projects.map(project => 
-        project.id === currentProject.id ? updatedProject : project
-      );
-      toast({
-        title: "Project updated",
-        description: "The project has been successfully updated.",
-      });
+      updatedProject.technologies = [];
     }
     
-    setProjects(updatedProjects);
-    localStorage.setItem('portfolioProjects', JSON.stringify(updatedProjects));
-    setIsEditing(false);
+    // Convert additional images from newline-separated string to array
+    if (imagesList.trim()) {
+      updatedProject.images = imagesList
+        .split('\n')
+        .map(url => url.trim())
+        .filter(url => url.length > 0);
+    } else {
+      updatedProject.images = [];
+    }
+    
+    // Handle testimonial fields
+    if (!hasTestimonial) {
+      updatedProject.testimonial_quote = null;
+      updatedProject.testimonial_name = null;
+      updatedProject.testimonial_position = null;
+    }
+    
+    try {
+      let result;
+      
+      // If it's a new project
+      if (!currentProject.id) {
+        // Remove id since we want Supabase to generate one
+        const { id, ...projectWithoutId } = updatedProject;
+        
+        result = await supabase
+          .from('projects')
+          .insert({
+            ...projectWithoutId,
+            technologies: Array.isArray(projectWithoutId.technologies) 
+              ? projectWithoutId.technologies 
+              : []
+          })
+          .select()
+          .single();
+          
+        if (result.error) throw result.error;
+        
+        toast({
+          title: "Project added",
+          description: "The new project has been successfully added.",
+        });
+        
+        // Add the new project to the state
+        setProjects([result.data, ...projects]);
+      } else {
+        // If updating an existing project
+        result = await supabase
+          .from('projects')
+          .update({
+            ...updatedProject,
+            technologies: Array.isArray(updatedProject.technologies) 
+              ? updatedProject.technologies 
+              : []
+          })
+          .eq('id', currentProject.id)
+          .select()
+          .single();
+          
+        if (result.error) throw result.error;
+        
+        toast({
+          title: "Project updated",
+          description: "The project has been successfully updated.",
+        });
+        
+        // Update the project in the state
+        setProjects(projects.map(p => 
+          p.id === currentProject.id ? result.data : p
+        ));
+      }
+      
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error saving project:', error);
+      toast({
+        title: "Error",
+        description: `Failed to save project: ${error.message || 'Unknown error'}`,
+        variant: "destructive"
+      });
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
     setCurrentProject({
-      id: 0,
+      id: '',
       title: "",
       category: "",
       image: "",
@@ -226,7 +269,7 @@ const AdminProjects = () => {
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold">Manage Projects</h3>
             <button 
-              onClick={handleAddProject}
+              onClick={() => handleAddProject()}
               className="px-4 py-2 bg-royal-gold/10 text-royal-gold rounded-lg hover:bg-royal-gold/20 transition-all flex items-center gap-2"
             >
               <svg 
@@ -247,73 +290,79 @@ const AdminProjects = () => {
             </button>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-white/10">
-            <table className="min-w-full divide-y divide-white/10">
-              <thead className="bg-royal-secondary">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Project</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Category</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Featured</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-white/70 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-royal divide-y divide-white/10">
-                {projects.map((project) => (
-                  <tr key={project.id} className="hover:bg-royal-secondary/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-12 w-12 rounded overflow-hidden flex-shrink-0">
-                          <img src={project.image} alt={project.title} className="h-full w-full object-cover" />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-white">{project.title}</div>
-                          <div className="text-sm text-white/60 truncate max-w-xs">{project.description}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-medium bg-royal-gold/10 text-royal-gold rounded-full">
-                        {project.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {project.featured ? (
-                        <span className="px-2 py-1 text-xs font-medium bg-green-500/10 text-green-400 rounded-full">
-                          Featured
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 text-xs font-medium bg-gray-500/10 text-gray-400 rounded-full">
-                          Not Featured
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button 
-                        onClick={() => handleEditProject(project)}
-                        className="text-royal-gold hover:text-royal-gold_light mr-4"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteProject(project.id)}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                
-                {projects.length === 0 && (
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-royal-gold"></div>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-white/10">
+              <table className="min-w-full divide-y divide-white/10">
+                <thead className="bg-royal-secondary">
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-white/60">
-                      No projects found. Add your first project.
-                    </td>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Project</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Category</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Featured</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-white/70 uppercase tracking-wider">Actions</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-royal divide-y divide-white/10">
+                  {projects.map((project) => (
+                    <tr key={project.id} className="hover:bg-royal-secondary/50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="h-12 w-12 rounded overflow-hidden flex-shrink-0">
+                            <img src={project.image} alt={project.title} className="h-full w-full object-cover" />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-white">{project.title}</div>
+                            <div className="text-sm text-white/60 truncate max-w-xs">{project.description}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 text-xs font-medium bg-royal-gold/10 text-royal-gold rounded-full">
+                          {project.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {project.featured ? (
+                          <span className="px-2 py-1 text-xs font-medium bg-green-500/10 text-green-400 rounded-full">
+                            Featured
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 text-xs font-medium bg-gray-500/10 text-gray-400 rounded-full">
+                            Not Featured
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button 
+                          onClick={() => handleEditProject(project)}
+                          className="text-royal-gold hover:text-royal-gold_light mr-4"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteProject(project.id)}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  
+                  {projects.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-8 text-center text-white/60">
+                        No projects found. Add your first project.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       ) : (
         <div>
@@ -322,7 +371,7 @@ const AdminProjects = () => {
               {currentProject.id ? `Edit Project: ${currentProject.title}` : 'Add New Project'}
             </h3>
             <button 
-              onClick={handleCancel}
+              onClick={() => setIsEditing(false)}
               className="px-4 py-2 bg-royal-secondary border border-white/20 rounded-lg text-white hover:bg-royal-secondary/70 transition-all"
             >
               Cancel
@@ -365,7 +414,7 @@ const AdminProjects = () => {
               </div>
               
               <div>
-                <label htmlFor="image" className="block text-white/70 mb-2">Image URL *</label>
+                <label htmlFor="image" className="block text-white/70 mb-2">Main Image URL *</label>
                 <input
                   id="image"
                   name="image"
@@ -373,7 +422,7 @@ const AdminProjects = () => {
                   value={currentProject.image}
                   onChange={handleInputChange}
                   className="w-full bg-royal/80 border border-white/20 rounded-lg p-3 text-white focus:outline-none focus:border-royal-gold"
-                  placeholder="Enter image URL"
+                  placeholder="Enter main image URL"
                   required
                 />
                 {currentProject.image && (
@@ -401,7 +450,7 @@ const AdminProjects = () => {
               <div className="flex items-center space-x-2">
                 <Switch
                   id="featured"
-                  checked={currentProject.featured}
+                  checked={currentProject.featured || false}
                   onCheckedChange={handleFeaturedChange}
                 />
                 <label htmlFor="featured" className="text-white cursor-pointer">
@@ -506,6 +555,19 @@ const AdminProjects = () => {
                   />
                   <p className="text-xs text-white/60 mt-1">Enter technologies separated by commas</p>
                 </div>
+
+                <div>
+                  <label htmlFor="imagesList" className="block text-white/70 mb-2">Project Gallery Images</label>
+                  <Textarea
+                    id="imagesList"
+                    value={imagesList}
+                    onChange={(e) => setImagesList(e.target.value)}
+                    rows={3}
+                    className="w-full bg-royal/80 border border-white/20 rounded-lg p-3 text-white focus:outline-none focus:border-royal-gold"
+                    placeholder="Add one URL per line for additional project images"
+                  />
+                  <p className="text-xs text-white/60 mt-1">Enter each image URL on a new line. These images will be shown in the project gallery along with the main image.</p>
+                </div>
                 
                 {/* Testimonial Section */}
                 <div className="border-t border-white/10 pt-6">
@@ -527,7 +589,7 @@ const AdminProjects = () => {
                         <Textarea
                           id="testimonial_quote"
                           name="testimonial_quote"
-                          value={currentProject.testimonial?.quote || ""}
+                          value={currentProject.testimonial_quote || ""}
                           onChange={handleTestimonialChange}
                           rows={3}
                           className="w-full bg-royal/80 border border-white/20 rounded-lg p-3 text-white focus:outline-none focus:border-royal-gold"
@@ -542,7 +604,7 @@ const AdminProjects = () => {
                             id="testimonial_name"
                             name="testimonial_name"
                             type="text"
-                            value={currentProject.testimonial?.name || ""}
+                            value={currentProject.testimonial_name || ""}
                             onChange={handleTestimonialChange}
                             className="w-full bg-royal/80 border border-white/20 rounded-lg p-3 text-white focus:outline-none focus:border-royal-gold"
                             placeholder="Client name"
@@ -555,7 +617,7 @@ const AdminProjects = () => {
                             id="testimonial_position"
                             name="testimonial_position"
                             type="text"
-                            value={currentProject.testimonial?.position || ""}
+                            value={currentProject.testimonial_position || ""}
                             onChange={handleTestimonialChange}
                             className="w-full bg-royal/80 border border-white/20 rounded-lg p-3 text-white focus:outline-none focus:border-royal-gold"
                             placeholder="Client position"
