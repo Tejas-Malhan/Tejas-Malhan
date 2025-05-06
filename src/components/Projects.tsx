@@ -2,75 +2,61 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-
-// Sample project data structure
-interface Project {
-  id: number;
-  title: string;
-  category: string;
-  image: string;
-  description: string;
-  featured?: boolean;
-  client?: string;
-  year?: string;
-  challenge?: string;
-  solution?: string;
-  technologies?: string[];
-  testimonial?: {
-    quote: string;
-    name: string;
-    position: string;
-  };
-}
-
-const defaultProjects: Project[] = [
-  {
-    id: 1,
-    title: "Luxury E-commerce",
-    category: "Web Development",
-    image: "https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&q=80",
-    description: "Premium online shopping experience for high-end fashion brand.",
-    featured: true
-  },
-  {
-    id: 2,
-    title: "Corporate Rebrand",
-    category: "Graphic Design",
-    image: "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&q=80",
-    description: "Complete visual identity overhaul for a financial institution.",
-    featured: true
-  },
-  {
-    id: 3,
-    title: "Social Campaign",
-    category: "Social Media",
-    image: "https://images.unsplash.com/photo-1431576901776-e539bd916ba2?auto=format&fit=crop&q=80",
-    description: "Strategic campaign that increased engagement by 200%.",
-    featured: true
-  },
-  {
-    id: 4,
-    title: "Product Launch Ads",
-    category: "Advertising",
-    image: "https://images.unsplash.com/photo-1459767129954-1b1c1f9b9ace?auto=format&fit=crop&q=80",
-    description: "Multi-channel advertising campaign for new product line.",
-    featured: true
-  },
-];
+import { supabase } from '@/integrations/supabase/client';
+import { Project } from '@/types/project';
+import { toast } from '@/hooks/use-toast';
 
 const Projects = () => {
-  const [projectsData, setProjectsData] = useState<Project[]>(defaultProjects);
+  const [projectsData, setProjectsData] = useState<Project[]>([]);
   const [filter, setFilter] = useState<string>("All");
+  const [loading, setLoading] = useState(true);
   const categories = ["All", "Web Development", "Graphic Design", "Social Media", "Advertising"];
   
-  // Load projects from localStorage on component mount
+  // Load projects from Supabase on component mount
   useEffect(() => {
-    const savedProjects = localStorage.getItem('portfolioProjects');
-    if (savedProjects) {
-      setProjectsData(JSON.parse(savedProjects));
-    }
+    const fetchProjects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          throw error;
+        }
+        
+        // Process technologies from string to array if needed
+        const processedData = data?.map(project => {
+          const processedProject = {...project} as Project;
+          if (typeof processedProject.technologies === 'string') {
+            processedProject.technologies = processedProject.technologies
+              ? processedProject.technologies
+                  .split(',')
+                  .map(tech => tech.trim())
+                  .filter(tech => tech !== '')
+              : [];
+          }
+          return processedProject;
+        }) || [];
+
+        setProjectsData(processedData);
+        console.log("Loaded projects data:", processedData);
+      } catch (error: any) {
+        console.error('Error fetching projects:', error);
+        toast({
+          title: "Error",
+          description: `Failed to load projects: ${error.message}`,
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProjects();
   }, []);
   
+  // Filter projects based on selected category
   const filteredProjects = filter === "All" 
     ? projectsData.filter(project => project.featured) 
     : projectsData.filter(project => project.category === filter && project.featured);
@@ -131,7 +117,20 @@ const Projects = () => {
         
         {/* Projects Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {filteredProjects.length > 0 ? (
+          {loading ? (
+            // Loading skeleton
+            Array(3).fill(0).map((_, index) => (
+              <div key={index} className="group relative overflow-hidden rounded-lg bg-[#1a1f27] animate-pulse">
+                <div className="h-56 bg-gray-700"></div>
+                <div className="p-6">
+                  <div className="h-4 bg-gray-700 rounded w-1/3 mb-3"></div>
+                  <div className="h-6 bg-gray-700 rounded w-3/4 mb-3"></div>
+                  <div className="h-4 bg-gray-700 rounded w-full mb-4"></div>
+                  <div className="h-4 bg-gray-700 rounded w-1/4"></div>
+                </div>
+              </div>
+            ))
+          ) : filteredProjects.length > 0 ? (
             filteredProjects.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))
