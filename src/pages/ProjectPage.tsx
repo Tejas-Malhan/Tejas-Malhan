@@ -3,145 +3,107 @@ import { useParams, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-
-// Project interface (matches the one in admin)
-interface Project {
-  id: number;
-  title: string;
-  category: string;
-  image: string;
-  description: string;
-  featured?: boolean;
-  client?: string;
-  year?: string;
-  challenge?: string;
-  solution?: string;
-  technologies?: string[];
-  testimonial?: {
-    quote: string;
-    name: string;
-    position: string;
-  };
-}
-
-// Default project data as fallback
-const defaultProjectsData: Record<string, Project> = {
-  "1": {
-    id: 1,
-    title: "Luxury E-commerce",
-    category: "Web Development",
-    client: "StyleElegance",
-    year: "2023",
-    description: "Premium online shopping experience for high-end fashion brand.",
-    challenge: "Create a high-performance e-commerce platform that conveys luxury while maintaining excellent performance and conversion rates.",
-    solution: "Developed a custom headless commerce solution with Next.js and Shopify, focusing on premium animations, product visualization, and a seamless checkout flow.",
-    images: [
-      "https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1431576901776-e539bd916ba2?auto=format&fit=crop&q=80"
-    ],
-    technologies: ["React", "Next.js", "Shopify", "Tailwind CSS", "Framer Motion"],
-    testimonial: {
-      quote: "The website Tejas created perfectly captures our brand's essence of luxury and exclusivity. The shopping experience is flawless.",
-      name: "Aria Patel",
-      position: "Marketing Director, StyleElegance"
-    }
-  },
-  "2": {
-    id: 2,
-    title: "Corporate Rebrand",
-    category: "Graphic Design",
-    client: "FinSecure Banking",
-    year: "2023",
-    description: "Complete visual identity overhaul for a financial institution.",
-    challenge: "Modernize the brand identity of a 30-year-old financial institution while maintaining trust and recognition among existing customers.",
-    solution: "Created a comprehensive brand system including logo, color palette, typography, iconography, and brand guidelines that balanced tradition with contemporary design principles.",
-    images: [
-      "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1459767129954-1b1c1f9b9ace?auto=format&fit=crop&q=80"
-    ],
-    technologies: ["Adobe Illustrator", "Figma", "Adobe Photoshop", "InDesign"],
-    testimonial: {
-      quote: "Our rebranding has been met with overwhelming positive feedback from both customers and employees. Tejas understood exactly what we needed.",
-      name: "Vikram Mehta",
-      position: "CEO, FinSecure Banking"
-    }
-  },
-  "3": {
-    id: 3,
-    title: "Social Campaign",
-    category: "Social Media",
-    client: "EcoLiving",
-    year: "2022",
-    description: "Strategic campaign that increased engagement by 200%.",
-    challenge: "Build brand awareness and community engagement for a new sustainable living product line with limited marketing budget.",
-    solution: "Developed a comprehensive social media strategy focused on user-generated content, influencer partnerships, and educational content about sustainability.",
-    images: [
-      "https://images.unsplash.com/photo-1431576901776-e539bd916ba2?auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1459767129954-1b1c1f9b9ace?auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&q=80"
-    ],
-    technologies: ["Instagram", "Facebook", "TikTok", "Canva", "Later", "Hootsuite"],
-    testimonial: {
-      quote: "The social campaign exceeded all our expectations. Our follower count tripled and sales increased by 150% during the campaign period.",
-      name: "Nisha Sharma",
-      position: "Founder, EcoLiving"
-    }
-  },
-  "4": {
-    id: 4,
-    title: "Product Launch Ads",
-    category: "Advertising",
-    client: "TechVision",
-    year: "2023",
-    description: "Multi-channel advertising campaign for new product line.",
-    challenge: "Generate pre-orders and excitement for a new tech product launch in a highly competitive market.",
-    solution: "Created a coordinated advertising campaign across search, display, social, and video platforms with consistent messaging and strong calls-to-action.",
-    images: [
-      "https://images.unsplash.com/photo-1459767129954-1b1c1f9b9ace?auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1431576901776-e539bd916ba2?auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&q=80"
-    ],
-    technologies: ["Google Ads", "Meta Ads", "LinkedIn Ads", "YouTube Ads", "Adobe Premiere", "After Effects"],
-  }
-};
+import { supabase } from '@/integrations/supabase/client';
+import { Project } from '@/types/project';
+import { toast } from '@/hooks/use-toast';
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  CarouselNext, 
+  CarouselPrevious 
+} from '@/components/ui/carousel';
 
 const ProjectPage = () => {
   const { id } = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | undefined>(undefined);
+  const [relatedProjects, setRelatedProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     if (!id) return;
     
-    // Try to load project from localStorage first
-    const savedProjects = localStorage.getItem('portfolioProjects');
-    if (savedProjects) {
-      const parsedProjects = JSON.parse(savedProjects);
-      // Find the project with matching id (convert to string for comparison)
-      const foundProject = parsedProjects.find(
-        (p: Project) => p.id.toString() === id.toString()
-      );
-      
-      if (foundProject) {
-        // If we have images property, use it, otherwise create one from single image
-        if (!foundProject.images) {
-          foundProject.images = [foundProject.image, foundProject.image];
+    const fetchProject = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('id', id)
+          .single();
+          
+        if (error) {
+          throw error;
         }
-        setProject(foundProject);
+        
+        if (data) {
+          // Process technologies from string to array if needed
+          let processedData = {...data} as Project;
+          
+          // Convert technologies to array if it's a string
+          if (typeof processedData.technologies === 'string') {
+            processedData.technologies = processedData.technologies
+              ? processedData.technologies
+                  .split(',')
+                  .map(tech => tech.trim())
+                  .filter(tech => tech !== '')
+              : [];
+          }
+          
+          setProject(processedData);
+          console.log("Loaded project data:", processedData);
+          
+          // After loading the project, fetch related projects in the same category
+          fetchRelatedProjects(processedData.category, processedData.id);
+        }
+      } catch (error: any) {
+        console.error('Error fetching project:', error);
+        toast({
+          title: "Error",
+          description: `Could not load project: ${error.message}`,
+          variant: "destructive"
+        });
+      } finally {
         setLoading(false);
-        return;
       }
-    }
+    };
     
-    // Fallback to default projects if not found in localStorage
-    const defaultProject = defaultProjectsData[id];
-    if (defaultProject) {
-      setProject(defaultProject);
-    }
+    const fetchRelatedProjects = async (category: string, currentId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('category', category)
+          .neq('id', currentId)
+          .limit(3);
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          // Process technologies from string to array for each project
+          const processedData = data.map(item => {
+            const project = {...item} as Project;
+            if (typeof project.technologies === 'string') {
+              project.technologies = project.technologies
+                ? project.technologies
+                    .split(',')
+                    .map(tech => tech.trim())
+                    .filter(tech => tech !== '')
+                : [];
+            }
+            return project;
+          });
+          
+          setRelatedProjects(processedData);
+          console.log("Loaded related projects:", processedData);
+        }
+      } catch (error: any) {
+        console.error('Error fetching related projects:', error);
+      }
+    };
     
-    setLoading(false);
+    fetchProject();
   }, [id]);
   
   if (loading) {
@@ -150,7 +112,8 @@ const ProjectPage = () => {
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <h2 className="text-3xl font-bold mb-4">Loading...</h2>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-royal-gold mx-auto mb-4"></div>
+            <h2 className="text-3xl font-bold">Loading...</h2>
           </div>
         </div>
         <Footer />
@@ -178,6 +141,21 @@ const ProjectPage = () => {
       </div>
     );
   }
+
+  // Prepare gallery images - either use the images array, fallback to the single image,
+  // or provide an empty array
+  const galleryImages = project.images && project.images.length > 0 
+    ? [project.image, ...project.images] // Include the main image first
+    : project.image ? [project.image] : [];
+
+  const hasTestimonial = project?.testimonial_quote && project?.testimonial_name;
+  
+  // Ensure technologies is always an array
+  const technologies = Array.isArray(project?.technologies) 
+    ? project.technologies 
+    : typeof project?.technologies === 'string' && project.technologies
+      ? project.technologies.split(',').map(tech => tech.trim()).filter(tech => tech !== '')
+      : [];
 
   return (
     <div className="min-h-screen bg-royal text-white">
@@ -218,13 +196,43 @@ const ProjectPage = () => {
               </Link>
             </div>
             
-            <div className="h-96 md:h-[500px] w-full rounded-xl overflow-hidden animated-border">
-              <img 
-                src={project.images ? project.images[0] : project.image} 
-                alt={project.title} 
-                className="w-full h-full object-cover"
-              />
-            </div>
+            {/* Project Image Gallery */}
+            {galleryImages.length > 0 && (
+              <div className="mb-8">
+                <Carousel className="relative">
+                  <CarouselContent>
+                    {galleryImages.map((image, index) => (
+                      <CarouselItem key={index} className="md:basis-full">
+                        <div className="h-96 md:h-[500px] w-full rounded-xl overflow-hidden animated-border">
+                          <img 
+                            src={image} 
+                            alt={`${project.title} - Image ${index + 1}`} 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  {galleryImages.length > 1 && (
+                    <>
+                      <CarouselPrevious className="left-4 bg-royal-gold/60 hover:bg-royal-gold border-none text-white" />
+                      <CarouselNext className="right-4 bg-royal-gold/60 hover:bg-royal-gold border-none text-white" />
+                    </>
+                  )}
+                </Carousel>
+                {galleryImages.length > 1 && (
+                  <div className="flex justify-center gap-2 mt-4">
+                    {galleryImages.map((_, index) => (
+                      <button 
+                        key={index}
+                        className={`w-3 h-3 rounded-full ${index === 0 ? 'bg-royal-gold' : 'bg-white/30'}`}
+                        aria-label={`Go to slide ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           {/* Project Info */}
@@ -271,11 +279,11 @@ const ProjectPage = () => {
                   <p className="text-white">{project.category}</p>
                 </div>
                 
-                {project.technologies && project.technologies.length > 0 && (
+                {technologies && technologies.length > 0 && (
                   <div>
                     <h4 className="text-royal-gold font-medium mb-2">Technologies</h4>
                     <div className="flex flex-wrap gap-2 mt-1">
-                      {project.technologies.map((tech, index) => (
+                      {technologies.map((tech, index) => (
                         <span 
                           key={index} 
                           className="px-3 py-1 bg-royal-gold/10 text-royal-gold rounded-full text-sm"
@@ -290,26 +298,8 @@ const ProjectPage = () => {
             </div>
           </div>
           
-          {/* Project Gallery - only show if we have multiple images */}
-          {project.images && project.images.length > 1 && (
-            <div className="mb-20">
-              <h2 className="text-2xl md:text-3xl font-bold mb-8">Project Gallery</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {project.images.slice(1).map((image, index) => (
-                  <div key={index} className="rounded-xl overflow-hidden animated-border">
-                    <img 
-                      src={image} 
-                      alt={`${project.title} ${index + 2}`} 
-                      className="w-full h-full object-cover aspect-video"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
           {/* Testimonial */}
-          {project.testimonial && (
+          {hasTestimonial && (
             <div className="mb-20">
               <div className="royal-card p-8 md:p-12">
                 <svg 
@@ -329,13 +319,61 @@ const ProjectPage = () => {
                 </svg>
                 
                 <p className="text-xl md:text-2xl text-white font-medium italic mb-8 leading-relaxed">
-                  "{project.testimonial.quote}"
+                  "{project.testimonial_quote}"
                 </p>
                 
                 <div>
-                  <p className="font-bold text-white">{project.testimonial.name}</p>
-                  <p className="text-white/60">{project.testimonial.position}</p>
+                  <p className="font-bold text-white">{project.testimonial_name}</p>
+                  <p className="text-white/60">{project.testimonial_position}</p>
                 </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Related Projects */}
+          {relatedProjects.length > 0 && (
+            <div className="mb-20">
+              <h2 className="text-2xl md:text-3xl font-bold mb-8">Related Projects</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {relatedProjects.map((relatedProject) => (
+                  <Link 
+                    to={`/projects/${relatedProject.id}`}
+                    key={relatedProject.id}
+                    className="group block relative overflow-hidden rounded-lg bg-[#1a1f27]"
+                  >
+                    <div className="relative h-48 overflow-hidden">
+                      <img 
+                        src={relatedProject.image} 
+                        alt={relatedProject.title} 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                    </div>
+                    
+                    <div className="p-6">
+                      <span className="text-royal-gold text-sm font-medium">{relatedProject.category}</span>
+                      <h3 className="text-xl font-bold text-white mt-1 mb-2">{relatedProject.title}</h3>
+                      <p className="text-white/70 mb-4 line-clamp-2">{relatedProject.description}</p>
+                      
+                      <div className="inline-flex items-center gap-2 text-white group-hover:text-royal-gold transition-colors">
+                        <span>View details</span>
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          width="18" 
+                          height="18" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          className="transition-transform group-hover:translate-x-1"
+                        >
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
               </div>
             </div>
           )}
