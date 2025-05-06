@@ -6,93 +6,58 @@ import Footer from '@/components/Footer';
 import { cn } from '@/lib/utils';
 import BookAppointmentButton from '@/components/BookAppointmentButton';
 import { Badge } from '@/components/ui/badge';
-
-// Sample project data structure
-interface Project {
-  id: number;
-  title: string;
-  category: string;
-  image: string;
-  description: string;
-  featured?: boolean;
-}
-
-// Default projects as fallback
-const defaultProjects: Project[] = [
-  {
-    id: 1,
-    title: "Luxury E-commerce",
-    category: "Web Development",
-    image: "https://images.unsplash.com/photo-1496307653780-42ee777d4833?auto=format&fit=crop&q=80",
-    description: "Premium online shopping experience for high-end fashion brand.",
-    featured: true
-  },
-  {
-    id: 2,
-    title: "Corporate Rebrand",
-    category: "Graphic Design",
-    image: "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&q=80",
-    description: "Complete visual identity overhaul for a financial institution.",
-    featured: true
-  },
-  {
-    id: 3,
-    title: "Social Campaign",
-    category: "Social Media",
-    image: "https://images.unsplash.com/photo-1431576901776-e539bd916ba2?auto=format&fit=crop&q=80",
-    description: "Strategic campaign that increased engagement by 200%.",
-    featured: true
-  },
-  {
-    id: 4,
-    title: "Product Launch Ads",
-    category: "Advertising",
-    image: "https://images.unsplash.com/photo-1459767129954-1b1c1f9b9ace?auto=format&fit=crop&q=80",
-    description: "Multi-channel advertising campaign for new product line.",
-    featured: true
-  },
-  {
-    id: 5,
-    title: "Restaurant Website",
-    category: "Web Development",
-    image: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&q=80",
-    description: "Responsive website with online reservation system for a fine dining restaurant."
-  },
-  {
-    id: 6,
-    title: "Mobile App UI",
-    category: "Graphic Design",
-    image: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&q=80",
-    description: "User interface design for a health and wellness tracking mobile application."
-  },
-  {
-    id: 7,
-    title: "Video Marketing",
-    category: "Advertising",
-    image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop&q=80",
-    description: "Series of promotional videos for a tech startup's product launch."
-  },
-  {
-    id: 8,
-    title: "Influencer Campaign",
-    category: "Social Media",
-    image: "https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?auto=format&fit=crop&q=80",
-    description: "Coordinated influencer partnerships that drove significant brand engagement."
-  }
-];
+import { supabase } from '@/integrations/supabase/client';
+import { Project } from '@/types/project';
+import { toast } from '@/hooks/use-toast';
 
 const ProjectsPage = () => {
-  const [projectsData, setProjectsData] = useState<Project[]>(defaultProjects);
+  const [projectsData, setProjectsData] = useState<Project[]>([]);
   const [filter, setFilter] = useState<string>("All");
+  const [loading, setLoading] = useState(true);
   const categories = ["All", "Web Development", "Graphic Design", "Social Media", "Advertising"];
   
-  // Load projects from localStorage on component mount
+  // Load projects from Supabase on component mount
   useEffect(() => {
-    const savedProjects = localStorage.getItem('portfolioProjects');
-    if (savedProjects) {
-      const parsedProjects = JSON.parse(savedProjects);
-      setProjectsData(parsedProjects);
-    }
+    const fetchProjects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          throw error;
+        }
+        
+        // Process technologies from string to array if needed
+        const processedData = data?.map(project => {
+          const processedProject = {...project} as Project;
+          if (typeof processedProject.technologies === 'string') {
+            processedProject.technologies = processedProject.technologies
+              ? processedProject.technologies
+                  .split(',')
+                  .map(tech => tech.trim())
+                  .filter(tech => tech !== '')
+              : [];
+          }
+          return processedProject;
+        }) || [];
+
+        setProjectsData(processedData);
+        console.log("Projects page loaded data:", processedData);
+      } catch (error: any) {
+        console.error('Error fetching projects:', error);
+        toast({
+          title: "Error loading projects",
+          description: error.message,
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProjects();
   }, []);
   
   const filteredProjects = filter === "All" 
@@ -133,14 +98,31 @@ const ProjectsPage = () => {
           </div>
           
           {/* Projects Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {/* Loading skeletons */}
+              {Array(6).fill(0).map((_, index) => (
+                <div key={index} className="group relative overflow-hidden rounded-lg bg-[#1a1f27] animate-pulse">
+                  <div className="h-56 bg-gray-700"></div>
+                  <div className="p-6">
+                    <div className="h-4 bg-gray-700 rounded w-1/3 mb-3"></div>
+                    <div className="h-6 bg-gray-700 rounded w-3/4 mb-3"></div>
+                    <div className="h-4 bg-gray-700 rounded w-full mb-4"></div>
+                    <div className="h-4 bg-gray-700 rounded w-1/4"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          )}
           
           {/* No Projects Found */}
-          {filteredProjects.length === 0 && (
+          {!loading && filteredProjects.length === 0 && (
             <div className="text-center py-12">
               <p className="text-xl text-white/70 mb-4">No projects found for this category.</p>
               <button
