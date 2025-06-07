@@ -8,7 +8,7 @@ Welcome to the official repository for my **freelance portfolio website**. This 
 ## 🚀 Live Website
 
 🔗 [tejasmalhan.netlify.app](https://tejasmalhan.netlify.app) 
-
+🚥 [![Netlify Status](https://api.netlify.com/api/v1/badges/9bf97456-917d-409b-bd60-3429c7bf5241/deploy-status)](https://app.netlify.com/projects/tejasmalhan/deploys)
 ---
 
 ## 🛠 Tech Stack
