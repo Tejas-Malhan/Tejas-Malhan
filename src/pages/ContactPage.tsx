@@ -140,7 +140,7 @@ const ContactPage = () => {
                   <ContactInfoItem
                     icon={<PhoneIcon />}
                     title="Phone"
-                    info="+91 99537 37018"
+                    info="+91 99537 37048"
                   />
                   <ContactInfoItem
                     icon={<EmailIcon />}
@@ -164,7 +164,7 @@ const ContactPage = () => {
                     label="LinkedIn"
                   />
                   <SocialButton 
-                    href="https://instagram.com" 
+                    href="https://www.instagram.com/spooderman_is_real/" 
                     icon={<InstagramIcon />}
                     label="Instagram"
                   />
